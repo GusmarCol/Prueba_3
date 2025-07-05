@@ -1,32 +1,29 @@
 const express = require('express');
 const app = express();
 
-// Ruta health-check
+// Health-check (necesario en Render Free)
 app.get('/', (req, res) => res.send('OK'));
-
-// Abre el puerto que Render exige
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`HTTP server listening on port ${PORT}`));
 
-// WhatsApp bot
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 
-// Carga las preguntas frecuentes desde faq.json
+// FAQs
 const faqs = JSON.parse(fs.readFileSync('faq.json', 'utf-8'));
-
-// Define las palabras que activarán una notificación para ti
+// Palabras clave para notificación
 const triggers = ["quiero contratar", "precio final", "cómo contrato", "agendar cita"];
 
 const client = new Client({
   authStrategy: new LocalAuth(),
-  puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
+  puppeteer: { args: ['--no-sandbox','--disable-setuid-sandbox'] }
 });
 
 client.on('qr', qr => {
+  // URL de la imagen QR (útil si no escaneas ASCII)
+  console.log('QR_IMAGE_URL:', qr);
+  // ASCII-QR
   qrcode.generate(qr, { small: true });
 });
 
@@ -47,7 +44,7 @@ client.on('message', async msg => {
     }
   }
 
-  // Notificación por triggers
+  // Notificación triggers
   if (!responded) {
     for (let word of triggers) {
       if (texto.includes(word)) {
