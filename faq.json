@@ -1,5 +1,37 @@
 {
-  "¿cuál es el precio?": "Nuestro servicio cuesta desde $99. Puedes ver todos nuestros planes aquí: https://gmmigration.carrd.co/#planes",
-  "¿dónde están ubicados?": "Estamos en Miami, pero atendemos de forma 100% remota a clientes de todo el mundo.",
-  "gracias": "¡Con gusto! Estamos para ayudarte."
+  "¿quiénes son ustedes?": "Somos GM Migration, un equipo de expertos preparadores de formas migratorias liderado por Gustavo Martínez. Nuestra misión es darte una guía experta y transparente para que logres tu futuro en EE . . . ahorrándote hasta un 90 % en comparación con los costos de un abogado.",
+  "¿son abogados?": "No somos un bufete de abogados, y esa es nuestra mayor fortaleza. Somos preparadores expertos que te damos el mapa y el control total de tu caso, ofreciéndote una alternativa más económica, rápida y transparente. Si buscas un abogado, te recomendamos contratar uno.",
+  "¿dónde están ubicados?": "Nuestro servicio es 100 % remoto, por lo que atendemos a profesionales de todo el mundo. Si deseas atención presencial, podemos agendar una cita en nuestras oficinas de Alpharetta (Georgia, EE.UU.) o Barranquilla (Colombia), una vez que hayamos evaluado tu caso.",
+  "¿cuál es el precio?": "Nuestros precios dependen del nivel de acompañamiento que necesites. Puedes ver todos nuestros planes detallados y sus costos en nuestra página web oficial: https://gmmigration.com/#planes",
+  "¿cómo empiezo?": "El mejor primer paso es tomar nuestro test de calificación gratuito. Te tomará 3 minutos y nos ayudará a entender tu perfil. Puedes empezar aquí: https://tally.so/r/3qq962",
+  "¿tienen planes de pago?": "Sí, ofrecemos diferentes opciones de pago para nuestros planes. Una vez que califiques y elijas un plan, te explicaremos las opciones disponibles.",
+  "¿qué garantía de éxito tengo?": "Ninguna empresa puede garantizar la aprobación de una visa, ya que la decisión final siempre es del gobierno de EE.UU. Lo que sí te garantizamos es una preparación de tu caso con los más altos estándares de calidad, basada en nuestra experiencia con cientos de casos y un altísimo rate de aprobación.",
+  "¿puedo agendar una cita?": "¡Claro! Si después de revisar nuestras guías tienes dudas específicas, puedes agendar una consulta. El primer paso es tomar nuestro test de calificación para entender mejor tu caso: https://tally.so/r/3qq962",
+
+  "¿qué es la eb-2 niw?": "Es una visa de residencia (Green Card) para profesionales con títulos avanzados o habilidades excepcionales. Su mayor ventaja es que no necesitas una oferta de empleo; tú mismo puedes solicitarla.",
+  "¿necesito un doctorado para la eb2?": "No necesariamente. Un título de maestría es suficiente. Incluso si solo tienes una licenciatura, 5 años de experiencia progresiva en tu campo pueden ser equivalentes.",
+  "¿qué significa \"interés nacional\"?": "Significa que tu trabajo es tan importante (en áreas como ciencia, salud, tecnología, negocios o artes) que beneficia a EE.UU. como nación. Esto te permite saltarte el requisito de tener una oferta de empleo, dándote una libertad inmensa.",
+  "¿puedo viajar con la eb2 niw?": "¡Sí! Esa es una de sus mayores ventajas. Una vez que obtienes tu Green Card a través de esta vía, tienes total libertad para viajar fuera de EE.UU. y regresar, incluyendo a tu país de origen.",
+  "¿mi familia también obtiene la green card?": "Sí. Una vez que tu caso es aprobado, tu cónyuge e hijos solteros menores de 21 años también reciben la Green Card, permitiéndoles vivir, trabajar y estudiar legalmente en EE.UU.",
+
+  "¿qué es la visa l-1a?": "Es una visa para transferir a un gerente o ejecutivo de una empresa extranjera a una sucursal en EE.UU. Es el puente ideal para expandir tu negocio al mercado americano.",
+  "¿la l-1a me da la residencia?": "No directamente. Es una visa temporal (de no-inmigrante), pero es un excelente \"puente\" que te posiciona de manera ideal para solicitar la Green Card en el futuro a través de una de las vías más rápidas para ejecutivos.",
+  "¿mi esposa puede trabajar con la l-1a?": "Sí. Tu cónyuge obtiene una visa L-2 y puede solicitar un permiso de trabajo abierto, lo que le permite trabajar en cualquier empresa de EE.UU. sin restricciones.",
+  "¿qué tan rápido puedo estar en usa con la l-1a?": "Es una de las vías más rápidas para estar operando en EE.UU. legalmente. El proceso puede completarse en cuestión de meses, ideal para quienes necesitan agilidad.",
+
+  "¿qué es la visa f-1?": "Es tu puerta de entrada a EE.UU. a través de la educación. Es una de las vías más rápidas y económicas para instalarte legalmente, conocer el país y construir un futuro.",
+  "¿puedo trabajar con visa de estudiante?": "Sí. La visa F-1 te permite trabajar legalmente un número limitado de horas durante tus estudios y, lo más importante, a tiempo completo por al menos un año después de graduarte, a través de un permiso llamado OPT.",
+  "¿la visa f-1 me lleva a la residencia?": "No directamente, pero es la plataforma de lanzamiento perfecta. Después de estudiar y ganar experiencia laboral, te conviertes en un candidato muy atractivo para otras visas de trabajo o incluso para la residencia.",
+  "¿puedo llevar a mi familia con la visa f-1?": "Sí, tu cónyuge e hijos pueden acompañarte con una visa F-2. Sin embargo, es importante saber que ellos no tienen permitido trabajar.",
+
+  "¿qué es el asilo?": "El asilo es un estatus de protección para quienes huyen de su país por un miedo real de ser perseguidos. No es una visa de trabajo ni una estrategia para buscar mejores oportunidades.",
+  "¿cuál es la mayor diferencia con una visa de trabajo?": "La libertad. Con una visa de residencia como la EB-2 NIW, puedes viajar a tu país de origen cuando quieras. Con un asilo, no puedes regresar, ya que contradice tu solicitud.",
+  "¿cuánto tarda el asilo?": "Es un proceso legal muy largo que puede durar muchos años, manteniéndote en un limbo migratorio y con gran incertidumbre. Las tasas de negación de asilo han llegado a superar el 50 %, y estos números pueden variar drásticamente con los cambios de gobierno.",
+  "¿puedo trabajar si pido asilo?": "Sí, pero no es inmediato. Puedes solicitar un permiso de trabajo y un Número de Seguro Social (SSN) 150 días después de haber radicado tu caso de asilo. Sin embargo, no hay garantía del 100 % de que sea aprobado, ya que las políticas migratorias pueden cambiar constantemente.",
+
+  "¿qué es un \"preparador de formas\"?": "Un preparador de formas es un experto que te ayuda a completar y organizar correctamente toda la documentación requerida por USCIS. Nos aseguramos de que tu caso esté presentado de manera profesional y cumpla con todos los requisitos, maximizando tus posibilidades de éxito.",
+  "¿qué es uscis?": "USCIS son las siglas de \"U.S. Citizenship and Immigration Services\" (Servicios de Ciudadanía e Inmigración de Estados Unidos). Es la agencia del gobierno encargada de procesar y decidir sobre todas las solicitudes de visas y residencia.",
+  "¿el test de calificación tiene algún costo?": "No, nuestro test de calificación es 100 % gratuito y sin compromiso. Su objetivo es darnos una idea clara de tu perfil para poder recomendarte el mejor camino a seguir. Puedes tomarlo aquí: https://tally.so/r/3qq962",
+  "¿qué pasa después de que pago un plan?": "Una vez que realizas el pago, recibirás un correo de bienvenida con el acceso a nuestra plataforma y los siguientes pasos. Dependiendo de tu plan, tendrás acceso a guías, plantillas o agendaremos nuestras sesiones de trabajo.",
+  "¿puedo cambiar de plan más adelante?": "¡Sí, por supuesto! Si empiezas con un plan y sientes que necesitas más acompañamiento, podemos hacer un upgrade a un plan superior en cualquier momento."
 }
