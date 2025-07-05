@@ -10,20 +10,25 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 
-// FAQs
+// Carga las preguntas frecuentes
 const faqs = JSON.parse(fs.readFileSync('faq.json', 'utf-8'));
-// Palabras clave para notificación
+// Palabras clave para notificarme
 const triggers = ["quiero contratar", "precio final", "cómo contrato", "agendar cita"];
 
 const client = new Client({
   authStrategy: new LocalAuth(),
-  puppeteer: { args: ['--no-sandbox','--disable-setuid-sandbox'] }
+  puppeteer: {
+    args: ['--no-sandbox','--disable-setuid-sandbox']
+  }
 });
 
+// Cuando llega el QR
 client.on('qr', qr => {
-  // URL de la imagen QR (útil si no escaneas ASCII)
-  console.log('QR_IMAGE_URL:', qr);
-  // ASCII-QR
+  // Codificamos para URL
+  const encoded = encodeURIComponent(qr);
+  // Imprimimos el enlace completo
+  console.log('QR_LINK:', `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}`);
+  // Seguimos mostrando el ASCII-QR
   qrcode.generate(qr, { small: true });
 });
 
@@ -44,7 +49,7 @@ client.on('message', async msg => {
     }
   }
 
-  // Notificación triggers
+  // Notificar triggers
   if (!responded) {
     for (let word of triggers) {
       if (texto.includes(word)) {
