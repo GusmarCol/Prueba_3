@@ -1,0 +1,13 @@
+{
+  "name": "gm-whatsapp-bot-render-http",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "whatsapp-web.js": "^1.19.1",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
