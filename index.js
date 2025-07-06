@@ -66,13 +66,10 @@ client.on('message', async msg => {
   const chat = msg.from;
   const text = (msg.body||'').trim();
 
-  // Inicializa estado si nuevo chat
+  // Inicializa o reinicia estado si nuevo chat o fallback
   if (!state[chat]) {
     state[chat] = { step:'welcome', data:{}, last:Date.now(), tries:0 };
-    saveState();
   }
-
-  // Si >5min sin responder, reinicia flujo
   const now = Date.now();
   if (now - state[chat].last > 300000) {
     state[chat].step = 'welcome';
@@ -81,7 +78,7 @@ client.on('message', async msg => {
   state[chat].last = now;
   saveState();
 
-  // (Opcional) Comandos admin para pausar / reanudar
+  // Comandos admin para pausar / reanudar
   if (chat === ADMIN) {
     const cmd = text.toLowerCase();
     if (cmd === '!pausar') {
@@ -97,39 +94,47 @@ client.on('message', async msg => {
 
   const S = state[chat];
 
-  // ——— Flujo de menú principal ———
   switch (S.step) {
-
     case 'welcome':
       await msg.reply(
-        `¡Hola! 👋 Bienvenido/a a GM Migration. ¿Cómo puedo ayudarte hoy?\n\n`+
-        `1️⃣ Asilo\n`+
-        `2️⃣ Visa EB-2 NIW\n`+
-        `3️⃣ Visa L-1A\n`+
-        `4️⃣ Visa F-1\n`+
+        `👋 Hola, te saluda *Carlos*, asistente virtual de GM Migration. Aquí tienes las opciones con las que puedo ayudarte de forma rápida:\n\n`+
+        `1️⃣ Asilos\n`+
+        `2️⃣ Visa EB-2 NIW (Trabajo / Profesional)\n`+
+        `3️⃣ Visa L-1A (Trabajo / Negocios)\n`+
+        `4️⃣ Visa F-1 (Estudiante)\n`+
         `5️⃣ Asesoría con un experto\n`+
-        `6️⃣ Ya tengo un caso abierto\n`+
-        `7️⃣ Otro asunto\n\n`+
-        `📌 Responde solo con el número (1–7).`
+        `6️⃣ Ya soy cliente con caso abierto\n`+
+        `7️⃣ Es otro asunto\n\n`+
+        `📌 *Recuerda escoger solo con el número (1–7).*`
       );
       S.step = 'menu'; saveState();
       return;
 
     case 'menu':
       if (!/^[1-7]$/.test(text)) {
-        return msg.reply('Solo coloca el número de 1 a 7, por favor.');
+        S.step = 'welcome'; saveState();
+        return msg.reply(
+          `🔄 ¡Hola de nuevo! Soy *Carlos*, tu asistente virtual de GM Migration. ¿En qué más puedo ayudarte hoy?\n\n`+
+          `1️⃣ Asilos\n`+
+          `2️⃣ Visa EB-2 NIW (Trabajo / Profesional)\n`+
+          `3️⃣ Visa L-1A (Trabajo / Negocios)\n`+
+          `4️⃣ Visa F-1 (Estudiante)\n`+
+          `5️⃣ Asesoría con un experto\n`+
+          `6️⃣ Ya soy cliente con caso abierto\n`+
+          `7️⃣ Es otro asunto\n\n`+
+          `📌 *Recuerda escoger solo con el número (1–7).*`
+        );
       }
       S.data.choice = text;
-      // redirige
       const mapStep = {
-        '1':'asilo', '2':'eb2', '3':'l1a', '4':'f1',
-        '5':'expert', '6':'openCase', '7':'other'
+        '1':'asilo','2':'eb2','3':'l1a','4':'f1',
+        '5':'expert','6':'openCase','7':'other'
       };
       S.step = mapStep[text];
       saveState();
       return client.emit('message', msg);
 
-    // ——— Submenú Asilo ———
+    // ——— Asilos ———
     case 'asilo':
       await msg.reply(
         `Asilo:\n`+
@@ -146,45 +151,55 @@ client.on('message', async msg => {
       if (!/^[1-5]$/.test(text)) {
         return msg.reply('Responde 1–5, porfa.');
       }
-      if (text==='1') {
+      if (text === '1') {
         await msg.reply('Guía Asilo: https://guias.gmmigration.com/');
+        S.step = 'welcome'; saveState();
+        return;
       }
-      if (text==='2') {
+      if (text === '2') {
         await msg.reply(
-          `Beneficios Asilo:\n`+
-          `- Protección\n- Permiso de trabajo\n- Cobertura familiar\n\n`+
-          `1️⃣ Planes\n2️⃣ Cita\n3️⃣ Otro`
+          `🌟 *Beneficios de Asilo*: \n`+
+          `- Protección ante deportación\n`+
+          `- Permiso de trabajo rápido\n`+
+          `- Cobertura para tu familia\n\n`+
+          `1️⃣ Ver nuestros planes\n`+
+          `2️⃣ Agendar una cita\n`+
+          `3️⃣ Regresar al menú principal\n\n`+
+          `📌 Responde con el número (1–3).`
         );
         S.step = 'asiloBen'; saveState();
         return;
       }
-      if (text==='3'||text==='4') {
+      if (text === '3' || text === '4') {
         await msg.reply(
-          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+          'Visita https://gmmigration.com, sección *Planes*, elige y paga de forma segura 🔒'
         );
+        S.step = 'welcome'; saveState();
+        return;
       }
-      if (text==='5') {
+      if (text === '5') {
         S.step = 'bookMode'; saveState();
         return client.emit('message', msg);
       }
-      S.step='welcome'; saveState();
-      return;
+      // fallback to menu
+      S.step = 'welcome'; saveState();
+      return client.emit('message', msg);
 
     case 'asiloBen':
-      if (text==='1') {
-        await msg.reply(
-          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
-        );
-      } else if (text==='2') {
+      if (text === '1') {
+        await msg.reply('Planes de Asilo: https://gmmigration.com');
+      } else if (text === '2') {
         S.step = 'bookMode'; saveState();
         return client.emit('message', msg);
-      } else {
-        await msg.reply('Cuéntame tu duda o elige otra opción.');
+      } else if (text === '3') {
+        S.step = 'welcome'; saveState();
+        return client.emit('message', msg);
       }
-      S.step='welcome'; saveState();
-      return;
+      // fallback
+      S.step = 'welcome'; saveState();
+      return client.emit('message', msg);
 
-    // ——— Submenú EB-2 NIW ———
+    // ——— EB-2 NIW ———
     case 'eb2':
       await msg.reply(
         `EB-2 NIW:\n`+
@@ -194,51 +209,58 @@ client.on('message', async msg => {
         `4️⃣ Hablar con un experto\n\n`+
         `📌 Solo número.`
       );
-      S.step='eb2Opt'; saveState();
+      S.step = 'eb2Opt'; saveState();
       return;
     case 'eb2Opt':
       if (!/^[1-4]$/.test(text)) {
         return msg.reply('Responde 1–4, porfa.');
       }
-      if (text==='1') {
+      if (text === '1') {
         await msg.reply('Test de calificación: https://tally.so/r/3qq962');
-      }
-      if (text==='2') {
-        await msg.reply(
-          `Beneficios EB-2 NIW:\n`+
-          `- Sin oferta de empleo\n- Autopetición\n- Familia\n- Viajes libres\n\n`+
-          `1️⃣ Test 2️⃣ Planes 3️⃣ Cita`
-        );
-        S.step='eb2Ben'; saveState();
+        S.step = 'welcome'; saveState();
         return;
       }
-      if (text==='3') {
+      if (text === '2') {
         await msg.reply(
-          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+          `🌟 *Beneficios EB-2 NIW*: \n`+
+          `- Autopetición sin oferta de empleo\n`+
+          `- Incluye a tu cónyuge e hijos\n`+
+          `- Viaja libremente mientras se procesa\n`+
+          `- Vía directa a residencia\n\n`+
+          `1️⃣ Ver nuestros planes\n`+
+          `2️⃣ Agendar una cita\n`+
+          `3️⃣ Regresar al menú principal\n\n`+
+          `📌 Responde con el número (1–3).`
         );
+        S.step = 'eb2Ben'; saveState();
+        return;
       }
-      if (text==='4') {
-        S.step='bookMode'; saveState();
+      if (text === '3') {
+        await msg.reply('Planes EB-2 NIW: https://gmmigration.com');
+        S.step = 'welcome'; saveState();
+        return;
+      }
+      if (text === '4') {
+        S.step = 'bookMode'; saveState();
         return client.emit('message', msg);
       }
-      S.step='welcome'; saveState();
-      return;
+      S.step = 'welcome'; saveState();
+      return client.emit('message', msg);
 
     case 'eb2Ben':
-      if (text==='1') {
-        await msg.reply('Test: https://tally.so/r/3qq962');
-      } else if (text==='2') {
-        await msg.reply(
-          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
-        );
-      } else {
-        S.step='bookMode'; saveState();
+      if (text === '1') {
+        await msg.reply('Planes EB-2 NIW: https://gmmigration.com');
+      } else if (text === '2') {
+        S.step = 'bookMode'; saveState();
+        return client.emit('message', msg);
+      } else if (text === '3') {
+        S.step = 'welcome'; saveState();
         return client.emit('message', msg);
       }
-      S.step='welcome'; saveState();
-      return;
+      S.step = 'welcome'; saveState();
+      return client.emit('message', msg);
 
-    // ——— Submenú L-1A ———
+    // ——— L-1A ———
     case 'l1a':
       await msg.reply(
         `Visa L-1A:\n`+
@@ -248,48 +270,58 @@ client.on('message', async msg => {
         `4️⃣ Hablar con un experto\n\n`+
         `📌 Solo número.`
       );
-      S.step='l1aOpt'; saveState();
+      S.step = 'l1aOpt'; saveState();
       return;
     case 'l1aOpt':
       if (!/^[1-4]$/.test(text)) {
         return msg.reply('Responde 1–4.');
       }
-      if (text==='1') {
+      if (text === '1') {
         await msg.reply('Guía L-1A: https://guias.gmmigration.com/');
-      }
-      if (text==='2') {
-        await msg.reply(
-          `Beneficios L-1A:\n`+
-          `- Transferencia rápida\n- Cónyuge con permiso\n- Expansión\n- Puente a Green Card\n\n`+
-          `1️⃣ Planes 2️⃣ Cita`
-        );
-        S.step='l1aBen'; saveState();
+        S.step = 'welcome'; saveState();
         return;
       }
-      if (text==='3') {
+      if (text === '2') {
         await msg.reply(
-          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+          `🌟 *Beneficios L-1A*: \n`+
+          `- Traslado exprés de ejecutivos\n`+
+          `- Cónyuge con permiso de trabajo\n`+
+          `- Facilita expansión de negocio\n`+
+          `- Camino rápido a Green Card\n\n`+
+          `1️⃣ Ver nuestros planes\n`+
+          `2️⃣ Agendar una cita\n`+
+          `3️⃣ Regresar al menú principal\n\n`+
+          `📌 Responde con el número (1–3).`
         );
+        S.step = 'l1aBen'; saveState();
+        return;
       }
-      if (text==='4') {
-        S.step='bookMode'; saveState();
+      if (text === '3') {
+        await msg.reply('Planes L-1A: https://gmmigration.com');
+        S.step = 'welcome'; saveState();
+        return;
+      }
+      if (text === '4') {
+        S.step = 'bookMode'; saveState();
         return client.emit('message', msg);
       }
-      S.step='welcome'; saveState();
-      return;
-    case 'l1aBen':
-      if (text==='1') {
-        await msg.reply(
-          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
-        );
-      } else {
-        S.step='bookMode'; saveState();
-        return client.emit('message', msg);
-      }
-      S.step='welcome'; saveState();
-      return;
+      S.step = 'welcome'; saveState();
+      return client.emit('message', msg);
 
-    // ——— Submenú F-1 ———
+    case 'l1aBen':
+      if (text === '1') {
+        await msg.reply('Planes L-1A: https://gmmigration.com');
+      } else if (text === '2') {
+        S.step = 'bookMode'; saveState();
+        return client.emit('message', msg);
+      } else if (text === '3') {
+        S.step = 'welcome'; saveState();
+        return client.emit('message', msg);
+      }
+      S.step = 'welcome'; saveState();
+      return client.emit('message', msg);
+
+    // ——— F-1 ———
     case 'f1':
       await msg.reply(
         `Visa F-1:\n`+
@@ -299,54 +331,67 @@ client.on('message', async msg => {
         `4️⃣ Hablar con un experto\n\n`+
         `📌 Solo número.`
       );
-      S.step='f1Opt'; saveState();
+      S.step = 'f1Opt'; saveState();
       return;
     case 'f1Opt':
       if (!/^[1-4]$/.test(text)) {
         return msg.reply('Responde 1–4.');
       }
-      if (text==='1') {
+      if (text === '1') {
         await msg.reply('Guía F-1: https://guias.gmmigration.com/');
-      }
-      if (text==='2') {
-        await msg.reply(
-          `Beneficios F-1:\n`+
-          `- Estudiar en EE.UU.\n- Trabajo y OPT\n- Networking\n- Vía a residencia\n\n`+
-          `1️⃣ Planes 2️⃣ Cita`
-        );
-        S.step='f1Ben'; saveState();
+        S.step = 'welcome'; saveState();
         return;
       }
-      if (text==='3') {
+      if (text === '2') {
         await msg.reply(
-          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+          `🌟 *Beneficios Visa F-1*: \n`+
+          `- Estudia en EE.UU.\n`+
+          `- OPT y trabajo práctico\n`+
+          `- Networking profesional\n`+
+          `- Puerta a residencia\n\n`+
+          `1️⃣ Ver nuestros planes\n`+
+          `2️⃣ Agendar una cita\n`+
+          `3️⃣ Regresar al menú principal\n\n`+
+          `📌 Responde con el número (1–3).`
         );
+        S.step = 'f1Ben'; saveState();
+        return;
       }
-      if (text==='4') {
-        S.step='bookMode'; saveState();
+      if (text === '3') {
+        await msg.reply('Planes F-1: https://gmmigration.com');
+        S.step = 'welcome'; saveState();
+        return;
+      }
+      if (text === '4') {
+        S.step = 'bookMode'; saveState();
         return client.emit('message', msg);
       }
-      S.step='welcome'; saveState();
-      return;
+      S.step = 'welcome'; saveState();
+      return client.emit('message', msg);
+
     case 'f1Ben':
-      if (text==='1') {
-        await msg.reply(
-          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
-        );
-      } else {
-        S.step='bookMode'; saveState();
+      if (text === '1') {
+        await msg.reply('Planes F-1: https://gmmigration.com');
+      } else if (text === '2') {
+        S.step = 'bookMode'; saveState();
+        return client.emit('message', msg);
+      } else if (text === '3') {
+        S.step = 'welcome'; saveState();
         return client.emit('message', msg);
       }
-      S.step='welcome'; saveState();
-      return;
+      S.step = 'welcome'; saveState();
+      return client.emit('message', msg);
 
     // ——— Asesoría directa ———
     case 'expert':
       await msg.reply(
-        `Asesoría:\n1️⃣ Virtual (12 h)\n2️⃣ Presencial (24 h–1 sem)\n\n`+
-        `📌 Solo número.`
+        `Asesoría:\n`+
+        `1️⃣ Virtual (Muy rápido: en ≤ 12 h)\n`+
+        `2️⃣ Presencial (Agendada en ≤ 1 sem)\n`+
+        `3️⃣ Regresar al menú principal\n\n`+
+        `📌 Responde con el número (1–3).`
       );
-      S.step='bookMode'; saveState();
+      S.step = 'bookMode'; saveState();
       return;
 
     // ——— Caso abierto ———
@@ -354,80 +399,109 @@ client.on('message', async msg => {
       await msg.reply(
         `¿Con quién quieres agendar?\n`+
         `1️⃣ Gustavo M.\n2️⃣ Vianny J.\n3️⃣ Arelys J.\n`+
-        `4️⃣ Steven P.\n5️⃣ Michael J.\n6️⃣ Cindy P.\n7️⃣ Otro`
+        `4️⃣ Steven P.\n5️⃣ Michael J.\n6️⃣ Cindy P.\n7️⃣ Otro\n`+
+        `8️⃣ Regresar al menú principal\n\n`+
+        `📌 Responde con el número (1–8).`
       );
-      S.step='openOpt'; saveState();
+      S.step = 'openOpt'; saveState();
       return;
     case 'openOpt':
+      if (text === '8') {
+        S.step = 'welcome'; saveState();
+        return client.emit('message', msg);
+      }
       if (!/^[1-7]$/.test(text)) {
-        return msg.reply('Responde 1–7.');
+        return msg.reply('Responde un número válido.');
       }
       const names = ['Gustavo M.','Vianny J.','Arelys J.','Steven P.','Michael J.','Cindy P.','otro'];
       S.data.expert = names[Number(text)-1];
       await msg.reply(
         `Agendaré con ${S.data.expert}. Por favor envía tu nombre completo, email y teléfono.`
       );
-      S.step='collectContact'; saveState();
-      return;
-
-    // ——— Otro asunto ———
-    case 'other':
-      await msg.reply(
-        'Entiendo. Cuéntame tu consulta o deja tu nombre y ciudad/país, y te responderé personalmente.'
-      );
-      S.step='welcome'; saveState();
+      S.step = 'collectContact'; saveState();
       return;
 
     // ——— Modo cita ———
     case 'bookMode':
-      if (!/^[1-2]$/.test(text)) {
-        return msg.reply('Responde 1️⃣ o 2️⃣.');
+      if (!/^[1-3]$/.test(text)) {
+        return msg.reply('Responde con 1, 2 o 3.');
       }
-      if (text==='1') {
+      if (text === '3') {
+        S.step = 'welcome'; saveState();
+        return client.emit('message', msg);
+      }
+      if (text === '1') {
         await msg.reply(
-          'Cita virtual 🖥️. Te contactaré en las próximas 12 h. '+ 
-          'Envíame tu nombre completo, email y teléfono.'
+          `🚀 Has elegido *cita virtual* (Muy rápido: en ≤ 12 h).\n`+
+          `Envíame tu nombre completo, email y teléfono.`
         );
-        S.data.mode='virtual';
+        S.data.mode = 'virtual';
       } else {
         await msg.reply(
-          'Cita presencial 🏢. Te notifico fecha en 24 h–1 sem. Elige oficina:\n'+
-          '1️⃣ Alpharetta, GA\n2️⃣ San Antonio, TX\n3️⃣ Barranquilla, CO'
+          `🏢 Has elegido *cita presencial* (Agendada en ≤ 1 sem).\n`+
+          `Elige oficina:\n`+
+          `1️⃣ Alpharetta, GA\n`+
+          `2️⃣ San Antonio, TX\n`+
+          `3️⃣ Barranquilla, CO\n`+
+          `4️⃣ Regresar al menú principal\n\n`+
+          `📌 Responde con el número (1–4).`
         );
-        S.data.mode='presencial';
-        S.step='selectOffice'; saveState();
+        S.data.mode = 'presencial';
+        S.step = 'selectOffice'; saveState();
         return;
       }
-      S.step='collectContact'; saveState();
+      S.step = 'collectContact'; saveState();
       return;
 
     case 'selectOffice':
+      if (text === '4') {
+        S.step = 'welcome'; saveState();
+        return client.emit('message', msg);
+      }
       if (!/^[1-3]$/.test(text)) {
-        return msg.reply('Responde 1–3.');
+        return msg.reply('Responde con 1–4.');
       }
       const offices = ['Alpharetta, GA','San Antonio, TX','Barranquilla, CO'];
       S.data.office = offices[Number(text)-1];
       await msg.reply(
-        `Agendaré en ${S.data.office}. Te aviso fecha en 24 h–1 sem. `+
-        'Ahora tu nombre completo, email y teléfono.'
+        `Agendaré en ${S.data.office}. Ahora envía tu nombre completo, email y teléfono.`
       );
-      S.step='collectContact'; saveState();
+      S.step = 'collectContact'; saveState();
       return;
 
     // ——— Recolecta datos y notifica admin ———
     case 'collectContact':
       S.data.contact = text;
       saveState();
-      await msg.reply('¡Gracias! En breve recibirás los detalles.');
+      await msg.reply(
+        `✅ ¡Listo! En breve recibirás los detalles.\n\n`+
+        `😊 Recuerda que te habló *Carlos*, tu asistente virtual, y fue un gusto saludarte hoy.`
+      );
       await client.sendMessage(
         ADMIN,
-        `📅 Cita:\n• Prospecto: ${chat}\n`+
+        `📅 *Cita GM Migration*\n`+
+        `• Prospecto: ${chat}\n`+
         `• Modalidad: ${S.data.mode}\n`+
-        (S.data.office?`• Oficina: ${S.data.office}\n`:'')+
+        (S.data.office ? `• Oficina: ${S.data.office}\n` : '')+
         `• Datos: ${S.data.contact}`
       );
       delete state[chat]; saveState();
       return;
+
+    default:
+      // Fallback general: siempre responder menú inicial
+      S.step = 'welcome'; saveState();
+      return msg.reply(
+        `🔄 ¡Hola de nuevo! Soy *Carlos*, tu asistente virtual de GM Migration. ¿En qué más puedo ayudarte hoy?\n\n`+
+        `1️⃣ Asilos\n`+
+        `2️⃣ Visa EB-2 NIW (Trabajo / Profesional)\n`+
+        `3️⃣ Visa L-1A (Trabajo / Negocios)\n`+
+        `4️⃣ Visa F-1 (Estudiante)\n`+
+        `5️⃣ Asesoría con un experto\n`+
+        `6️⃣ Ya soy cliente con caso abierto\n`+
+        `7️⃣ Es otro asunto\n\n`+
+        `📌 *Recuerda escoger solo con el número (1–7).*`
+      );
   }
 });
 
