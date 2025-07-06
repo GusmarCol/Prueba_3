@@ -7,6 +7,16 @@ const qrcode = require('qrcode-terminal');
 // ——— Health-check para Render ———
 const app = express();
 app.get('/', (_req, res) => res.send('OK'));
+
+// ——— QR endpoint y almacenamiento de último QR ———
+let lastQr = '';
+app.get('/qr', (_req, res) => {
+  if (!lastQr) return res.status(404).send('Aún no hay QR generado');
+  const url = encodeURIComponent(lastQr);
+  res.redirect(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${url}`);
+});
+
+// ——— Levanta el servidor ———
 app.listen(process.env.PORT || 3000, () => console.log('HTTP server listening'));
 
 // ——— Estado por chat ———
@@ -40,7 +50,16 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: { args:['--no-sandbox','--disable-setuid-sandbox'] }
 });
-client.on('qr', qr => { qrcode.generate(qr,{ small:true }); });
+
+// Captura QR, guarda en memoria y muestra enlace público
+client.on('qr', qr => {
+  lastQr = qr;
+  const ascii = qrcode.generate(qr, { small: true });
+  console.log('ASCII QR:\n', ascii);
+  console.log('  ——— Ahora abre en tu teléfono esta URL para escanear:');
+  console.log('      https://bot-whatsapp-render-42jc.onrender.com/qr');
+});
+
 client.on('ready', () => console.log('✅ Carlos listo y conectado'));
 
 client.on('message', async msg => {
@@ -366,7 +385,7 @@ client.on('message', async msg => {
       }
       if (text==='1') {
         await msg.reply(
-          'Cita virtual 🖥️. Te contactaré en las próximas 12 h. '+
+          'Cita virtual 🖥️. Te contactaré en las próximas 12 h. '+ 
           'Envíame tu nombre completo, email y teléfono.'
         );
         S.data.mode='virtual';
