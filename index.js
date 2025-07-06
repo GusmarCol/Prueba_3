@@ -4,49 +4,86 @@ const fs = require('fs');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
+// ——— Health-check para Render ———
 const app = express();
 app.get('/', (_req, res) => res.send('OK'));
-app.listen(process.env.PORT || 3000, () => console.log('Server up')); 
+app.listen(process.env.PORT || 3000, () => console.log('HTTP server listening'));
 
-// Estado por chat
-tconst STATE_FILE = 'state.json';
+// ——— Estado por chat ———
+const STATE_FILE = 'state.json';
 let state = {};
-try { state = JSON.parse(fs.readFileSync(STATE_FILE,'utf-8')); } catch {}
+try {
+  state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+} catch {
+  state = {};
+}
 function saveState() {
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state,null,2),'utf-8');
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf-8');
 }
 
+// ——— Admin ———
 const ADMIN = '16784579286@c.us';
 
-// Inicializa WhatsApp\const client = new Client({
+// ——— FAQs y triggers ———
+const faqsRaw = JSON.parse(fs.readFileSync('faq.json', 'utf-8'));
+const triggers = ["quiero contratar","precio final","cómo contrato","agendar cita"];
+function normalize(s='') {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[¿?¡!.,]/g,'').trim();
+}
+const faqMap = {};
+for (const q in faqsRaw) faqMap[ normalize(q) ] = faqsRaw[q];
+
+// ——— Inicializa cliente WhatsApp ———
+const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: { args:['--no-sandbox','--disable-setuid-sandbox'] }
 });
-client.on('qr', qr => qrcode.generate(qr,{ small:true }));
-client.on('ready', () => console.log('✅ Carlos listo')); 
+client.on('qr', qr => { qrcode.generate(qr,{ small:true }); });
+client.on('ready', () => console.log('✅ Carlos listo y conectado'));
 
 client.on('message', async msg => {
   const chat = msg.from;
   const text = (msg.body||'').trim();
 
-  // Inicializar estado si es nuevo chat
+  // Inicializa estado si nuevo chat
   if (!state[chat]) {
     state[chat] = { step:'welcome', data:{}, last:Date.now(), tries:0 };
     saveState();
   }
-  
-  const S = state[chat];
+
+  // Si >5min sin responder, reinicia flujo
   const now = Date.now();
-  if (now - S.last > 300000) {
-    S.step = 'welcome'; S.tries = 0;
+  if (now - state[chat].last > 300000) {
+    state[chat].step = 'welcome';
+    state[chat].tries = 0;
   }
-  S.last = now;
+  state[chat].last = now;
   saveState();
 
+  // (Opcional) Comandos admin para pausar / reanudar
+  if (chat === ADMIN) {
+    const cmd = text.toLowerCase();
+    if (cmd === '!pausar') {
+      state[chat].status = 'paused'; saveState();
+      return msg.reply('⏸️ Carlos PAUSADO. !activar para reanudar.');
+    }
+    if (cmd === '!activar') {
+      state[chat].status = 'active'; saveState();
+      return msg.reply('🔔 Carlos REACTIVADO.');
+    }
+  }
+  if (state[chat].status === 'paused') return;
+
+  const S = state[chat];
+
+  // ——— Flujo de menú principal ———
   switch (S.step) {
+
     case 'welcome':
       await msg.reply(
-        `¡Hola! 👋 Bienvenido/a a GM Migration. Estoy aquí para ayudarte.\n\n`+
+        `¡Hola! 👋 Bienvenido/a a GM Migration. ¿Cómo puedo ayudarte hoy?\n\n`+
         `1️⃣ Asilo\n`+
         `2️⃣ Visa EB-2 NIW\n`+
         `3️⃣ Visa L-1A\n`+
@@ -54,45 +91,52 @@ client.on('message', async msg => {
         `5️⃣ Asesoría con un experto\n`+
         `6️⃣ Ya tengo un caso abierto\n`+
         `7️⃣ Otro asunto\n\n`+
-        `📌 Responde solo con el número (1️⃣–7️⃣).`
+        `📌 Responde solo con el número (1–7).`
       );
-      S.step='menu'; saveState();
+      S.step = 'menu'; saveState();
       return;
 
     case 'menu':
-      if (!/^[1-7]$/.test(text)) return msg.reply('Por favor responde solo con el número de la opción (1️⃣–7️⃣).');
-      const steps = ['asilo','eb2','l1a','f1','expert','openCase','other'];
-      S.step = steps[Number(text)-1];
+      if (!/^[1-7]$/.test(text)) {
+        return msg.reply('Solo coloca el número de 1 a 7, por favor.');
+      }
+      S.data.choice = text;
+      // redirige
+      const mapStep = {
+        '1':'asilo', '2':'eb2', '3':'l1a', '4':'f1',
+        '5':'expert', '6':'openCase', '7':'other'
+      };
+      S.step = mapStep[text];
       saveState();
       return client.emit('message', msg);
 
+    // ——— Submenú Asilo ———
     case 'asilo':
       await msg.reply(
-        `¿Qué necesitas sobre asilo?\n`+
+        `Asilo:\n`+
         `1️⃣ Info general\n`+
         `2️⃣ Beneficios\n`+
         `3️⃣ Pagar defensivo\n`+
         `4️⃣ Pagar afirmativo\n`+
         `5️⃣ Hablar con un experto\n\n`+
-        `📌 Solo el número, por favor.`
+        `📌 Solo número.`
       );
-      S.step='asiloOpt'; saveState();
+      S.step = 'asiloOpt'; saveState();
       return;
-
     case 'asiloOpt':
-      if (!/^[1-5]$/.test(text)) return msg.reply('Responde con 1️⃣–5️⃣.');
+      if (!/^[1-5]$/.test(text)) {
+        return msg.reply('Responde 1–5, porfa.');
+      }
       if (text==='1') {
-        await msg.reply('Guía de asilo: https://guias.gmmigration.com/');
+        await msg.reply('Guía Asilo: https://guias.gmmigration.com/');
       }
       if (text==='2') {
         await msg.reply(
-          `Beneficios de asilo:\n`+
-          `- Protección ante persecución\n`+
-          `- Permiso de trabajo a 150 días\n`+
-          `- Deriva a familia\n\n`+
-          `¿1️⃣ Planes 🔒  2️⃣ Cita  3️⃣ Otro?`
+          `Beneficios Asilo:\n`+
+          `- Protección\n- Permiso de trabajo\n- Cobertura familiar\n\n`+
+          `1️⃣ Planes\n2️⃣ Cita\n3️⃣ Otro`
         );
-        S.step='asiloBen'; saveState();
+        S.step = 'asiloBen'; saveState();
         return;
       }
       if (text==='3'||text==='4') {
@@ -101,7 +145,7 @@ client.on('message', async msg => {
         );
       }
       if (text==='5') {
-        S.step='bookMode'; saveState();
+        S.step = 'bookMode'; saveState();
         return client.emit('message', msg);
       }
       S.step='welcome'; saveState();
@@ -113,7 +157,7 @@ client.on('message', async msg => {
           'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
         );
       } else if (text==='2') {
-        S.step='bookMode'; saveState();
+        S.step = 'bookMode'; saveState();
         return client.emit('message', msg);
       } else {
         await msg.reply('Cuéntame tu duda o elige otra opción.');
@@ -121,133 +165,217 @@ client.on('message', async msg => {
       S.step='welcome'; saveState();
       return;
 
+    // ——— Submenú EB-2 NIW ———
     case 'eb2':
       await msg.reply(
         `EB-2 NIW:\n`+
-        `1️⃣ ¿Aplicas? 2️⃣ Beneficios\n`+
-        `3️⃣ Pagar 🔒 4️⃣ Hablar con un experto\n\n`+
-        `📌 Solo número, por favor.`
+        `1️⃣ ¿Aplicas?\n`+
+        `2️⃣ Beneficios\n`+
+        `3️⃣ Planes y pago\n`+
+        `4️⃣ Hablar con un experto\n\n`+
+        `📌 Solo número.`
       );
       S.step='eb2Opt'; saveState();
       return;
-
     case 'eb2Opt':
-      if (!/^[1-4]$/.test(text)) return msg.reply('Responde con 1️⃣–4️⃣.');
-      if (text==='1') await msg.reply('Test de calificación: https://tally.so/r/3qq962');
-      if (text==='2') await msg.reply(
-        `Beneficios EB-2 NIW:\n`+
-        `- Sin oferta de empleo\n`+
-        `- Autopetición de caso\n`+
-        `- Deriva a familia\n`+
-        `- Libertad de viaje\n`+
-        `- Proceso rápido\n\n`+
-        `¿1️⃣ Test  2️⃣ Pagar 🔒  3️⃣ Cita?`
-      );
-      if (text==='3') await msg.reply(
-        'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
-      );
-      if (text==='4') { S.step='bookMode'; saveState(); return client.emit('message', msg); }
+      if (!/^[1-4]$/.test(text)) {
+        return msg.reply('Responde 1–4, porfa.');
+      }
+      if (text==='1') {
+        await msg.reply('Test de calificación: https://tally.so/r/3qq962');
+      }
+      if (text==='2') {
+        await msg.reply(
+          `Beneficios EB-2 NIW:\n`+
+          `- Sin oferta de empleo\n- Autopetición\n- Familia\n- Viajes libres\n\n`+
+          `1️⃣ Test 2️⃣ Planes 3️⃣ Cita`
+        );
+        S.step='eb2Ben'; saveState();
+        return;
+      }
+      if (text==='3') {
+        await msg.reply(
+          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+        );
+      }
+      if (text==='4') {
+        S.step='bookMode'; saveState();
+        return client.emit('message', msg);
+      }
       S.step='welcome'; saveState();
       return;
 
+    case 'eb2Ben':
+      if (text==='1') {
+        await msg.reply('Test: https://tally.so/r/3qq962');
+      } else if (text==='2') {
+        await msg.reply(
+          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+        );
+      } else {
+        S.step='bookMode'; saveState();
+        return client.emit('message', msg);
+      }
+      S.step='welcome'; saveState();
+      return;
+
+    // ——— Submenú L-1A ———
     case 'l1a':
       await msg.reply(
         `Visa L-1A:\n`+
-        `1️⃣ Info general 2️⃣ Beneficios\n`+
-        `3️⃣ Pagar 🔒 4️⃣ Hablar con un experto\n\n`+
-        `📌 Solo número, por favor.`
+        `1️⃣ Info general\n`+
+        `2️⃣ Beneficios\n`+
+        `3️⃣ Planes y pago\n`+
+        `4️⃣ Hablar con un experto\n\n`+
+        `📌 Solo número.`
       );
       S.step='l1aOpt'; saveState();
       return;
     case 'l1aOpt':
-      if (!/^[1-4]$/.test(text)) return msg.reply('Responde con 1️⃣–4️⃣.');
-      if (text==='1') await msg.reply('Guía L-1A: https://guias.gmmigration.com/');
-      if (text==='2') await msg.reply(
-        `Beneficios L-1A:\n`+
-        `- Transferencia rápida\n`+
-        `- Cónyuge con permiso de trabajo\n`+
-        `- Expansión de negocio\n`+
-        `- Vía a Green Card\n\n`+
-        `¿1️⃣ Planes 🔒  2️⃣ Cita  3️⃣ Otro?`
-      );
-      if (text==='3') await msg.reply(
-        'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
-      );
-      if (text==='4') { S.step='bookMode'; saveState(); return client.emit('message', msg); }
+      if (!/^[1-4]$/.test(text)) {
+        return msg.reply('Responde 1–4.');
+      }
+      if (text==='1') {
+        await msg.reply('Guía L-1A: https://guias.gmmigration.com/');
+      }
+      if (text==='2') {
+        await msg.reply(
+          `Beneficios L-1A:\n`+
+          `- Transferencia rápida\n- Cónyuge con permiso\n- Expansión\n- Puente a Green Card\n\n`+
+          `1️⃣ Planes 2️⃣ Cita`
+        );
+        S.step='l1aBen'; saveState();
+        return;
+      }
+      if (text==='3') {
+        await msg.reply(
+          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+        );
+      }
+      if (text==='4') {
+        S.step='bookMode'; saveState();
+        return client.emit('message', msg);
+      }
+      S.step='welcome'; saveState();
+      return;
+    case 'l1aBen':
+      if (text==='1') {
+        await msg.reply(
+          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+        );
+      } else {
+        S.step='bookMode'; saveState();
+        return client.emit('message', msg);
+      }
       S.step='welcome'; saveState();
       return;
 
+    // ——— Submenú F-1 ———
     case 'f1':
       await msg.reply(
         `Visa F-1:\n`+
-        `1️⃣ Info general 2️⃣ Beneficios\n`+
-        `3️⃣ Pagar 🔒 4️⃣ Hablar con un experto\n\n`+
-        `📌 Solo número, por favor.`
+        `1️⃣ Info general\n`+
+        `2️⃣ Beneficios\n`+
+        `3️⃣ Planes y pago\n`+
+        `4️⃣ Hablar con un experto\n\n`+
+        `📌 Solo número.`
       );
       S.step='f1Opt'; saveState();
       return;
     case 'f1Opt':
-      if (!/^[1-4]$/.test(text)) return msg.reply('Responde con 1️⃣–4️⃣.');
-      if (text==='1') await msg.reply('Guía F-1: https://guias.gmmigration.com/');
-      if (text==='2') await msg.reply(
-        `Beneficios F-1:\n`+
-        `- Estudiar en EE.UU.\n`+
-        `- Trabajo en campus y OPT\n`+
-        `- Networking\n`+
-        `- Vías a residencia\n\n`+
-        `¿1️⃣ Planes 🔒  2️⃣ Cita  3️⃣ Otro?`
-      );
-      if (text==='3') await msg.reply(
-        'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
-      );
-      if (text==='4') { S.step='bookMode'; saveState(); return client.emit('message', msg); }
+      if (!/^[1-4]$/.test(text)) {
+        return msg.reply('Responde 1–4.');
+      }
+      if (text==='1') {
+        await msg.reply('Guía F-1: https://guias.gmmigration.com/');
+      }
+      if (text==='2') {
+        await msg.reply(
+          `Beneficios F-1:\n`+
+          `- Estudiar en EE.UU.\n- Trabajo y OPT\n- Networking\n- Vía a residencia\n\n`+
+          `1️⃣ Planes 2️⃣ Cita`
+        );
+        S.step='f1Ben'; saveState();
+        return;
+      }
+      if (text==='3') {
+        await msg.reply(
+          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+        );
+      }
+      if (text==='4') {
+        S.step='bookMode'; saveState();
+        return client.emit('message', msg);
+      }
+      S.step='welcome'; saveState();
+      return;
+    case 'f1Ben':
+      if (text==='1') {
+        await msg.reply(
+          'Visita https://gmmigration.com, ve a la sección de **Planes**, elige la que más te convenga y haz tu pago de forma segura 🔒'
+        );
+      } else {
+        S.step='bookMode'; saveState();
+        return client.emit('message', msg);
+      }
       S.step='welcome'; saveState();
       return;
 
+    // ——— Asesoría directa ———
     case 'expert':
-      await msg.reply('Para agendar asesoría, ¿cómo prefieres tu cita?\n1️⃣ Virtual (12 h)\n2️⃣ Presencial (24 h–1 sem)');
+      await msg.reply(
+        `Asesoría:\n1️⃣ Virtual (12 h)\n2️⃣ Presencial (24 h–1 sem)\n\n`+
+        `📌 Solo número.`
+      );
       S.step='bookMode'; saveState();
       return;
 
+    // ——— Caso abierto ———
     case 'openCase':
       await msg.reply(
-        `¿Con quién deseas agendar?\n`+
+        `¿Con quién quieres agendar?\n`+
         `1️⃣ Gustavo M.\n2️⃣ Vianny J.\n3️⃣ Arelys J.\n`+
         `4️⃣ Steven P.\n5️⃣ Michael J.\n6️⃣ Cindy P.\n7️⃣ Otro`
       );
       S.step='openOpt'; saveState();
       return;
     case 'openOpt':
-      if (!/^[1-7]$/.test(text)) return msg.reply('Responde con 1️⃣–7️⃣.');
-      const experts = ['Gustavo M.','Vianny J.','Arelys J.','Steven P.','Michael J.','Cindy P.','otro'];
-      S.data.expert = experts[Number(text)-1];
+      if (!/^[1-7]$/.test(text)) {
+        return msg.reply('Responde 1–7.');
+      }
+      const names = ['Gustavo M.','Vianny J.','Arelys J.','Steven P.','Michael J.','Cindy P.','otro'];
+      S.data.expert = names[Number(text)-1];
       await msg.reply(
-        `Agendaré con ${S.data.expert}. Por favor dime tu nombre completo, email y teléfono.`
+        `Agendaré con ${S.data.expert}. Por favor envía tu nombre completo, email y teléfono.`
       );
       S.step='collectContact'; saveState();
       return;
 
+    // ——— Otro asunto ———
     case 'other':
       await msg.reply(
-        'Entiendo. Cuéntame brevemente tu consulta o deja tu nombre y país/ciudad, y te responderé personalmente.'
+        'Entiendo. Cuéntame tu consulta o deja tu nombre y ciudad/país, y te responderé personalmente.'
       );
       S.step='welcome'; saveState();
       return;
 
+    // ——— Modo cita ———
     case 'bookMode':
-      if (!['1','2'].includes(text)) return msg.reply('Responde 1️⃣ para Virtual o 2️⃣ para Presencial.');
+      if (!/^[1-2]$/.test(text)) {
+        return msg.reply('Responde 1️⃣ o 2️⃣.');
+      }
       if (text==='1') {
         await msg.reply(
-          'Cita 100% virtual 📱. Te contactaré en las próximas 12 h.\n' +
-          'Por favor, envíame tu nombre completo, email y teléfono.'
+          'Cita virtual 🖥️. Te contactaré en las próximas 12 h. '+
+          'Envíame tu nombre completo, email y teléfono.'
         );
-        S.data.mode = 'virtual';
+        S.data.mode='virtual';
       } else {
         await msg.reply(
-          `Cita presencial 🏢. Te notificaré fecha y hora en 24 h (hasta 1 sem).\n`+
-          `1️⃣ Alpharetta, GA\n2️⃣ San Antonio, TX\n3️⃣ Barranquilla, CO`
+          'Cita presencial 🏢. Te notifico fecha en 24 h–1 sem. Elige oficina:\n'+
+          '1️⃣ Alpharetta, GA\n2️⃣ San Antonio, TX\n3️⃣ Barranquilla, CO'
         );
-        S.data.mode = 'presencial';
+        S.data.mode='presencial';
         S.step='selectOffice'; saveState();
         return;
       }
@@ -255,26 +383,28 @@ client.on('message', async msg => {
       return;
 
     case 'selectOffice':
-      if (!/^[1-3]$/.test(text)) return msg.reply('Responde 1️⃣,2️⃣ o 3️⃣.');
+      if (!/^[1-3]$/.test(text)) {
+        return msg.reply('Responde 1–3.');
+      }
       const offices = ['Alpharetta, GA','San Antonio, TX','Barranquilla, CO'];
       S.data.office = offices[Number(text)-1];
       await msg.reply(
-        `Agendaré en ${S.data.office}. Te notificaré fecha y hora en 24 h (hasta 1 sem).\n`+
-        'Ahora dime tu nombre completo, email y teléfono.'
+        `Agendaré en ${S.data.office}. Te aviso fecha en 24 h–1 sem. `+
+        'Ahora tu nombre completo, email y teléfono.'
       );
       S.step='collectContact'; saveState();
       return;
 
+    // ——— Recolecta datos y notifica admin ———
     case 'collectContact':
       S.data.contact = text;
       saveState();
-      await msg.reply('¡Gracias! En breve te enviaremos los detalles.');
+      await msg.reply('¡Gracias! En breve recibirás los detalles.');
       await client.sendMessage(
         ADMIN,
-        `📅 Cita solicitada:\n`+
-        `• Prospecto: ${chat}\n`+
+        `📅 Cita:\n• Prospecto: ${chat}\n`+
         `• Modalidad: ${S.data.mode}\n`+
-        `${S.data.office?`• Oficina: ${S.data.office}\n`:''}`+
+        (S.data.office?`• Oficina: ${S.data.office}\n`:'')+
         `• Datos: ${S.data.contact}`
       );
       delete state[chat]; saveState();
