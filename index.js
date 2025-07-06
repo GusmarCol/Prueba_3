@@ -139,7 +139,7 @@ client.on('message', async msg => {
       if (normalize(text).includes(normalize(trg))) {
         await client.sendMessage(
           ADMIN,
-          `⚡ Prospective (${state[chat].name}): "${msg.body}"`
+          `⚡ Prospective:\n• Nombre: ${state[chat].name}\n• Teléfono: ${chat}\n• Interés: ${state[chat].interest}\n• Mensaje: "${msg.body}"`
         );
         responded = true;
         break;
@@ -154,7 +154,7 @@ client.on('message', async msg => {
     saveState();
     await client.sendMessage(
       ADMIN,
-      `🔕 Chat pausado: ${state[chat].name} (interés: ${state[chat].interest}). Usa !activar para reanudar.`
+      `🔕 Chat pausado:\n• Nombre: ${state[chat].name}\n• Teléfono: ${chat}\n• Interés: ${state[chat].interest}\n\nEscribe !activar para reanudar.`
     );
   }
 });
