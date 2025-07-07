@@ -11,6 +11,9 @@ const STATE_FILE = 'state.json';
 let state = {};
 let lastQr = '';
 
+// URL fija de tu despliegue
+const BASE_URL = 'https://bot-whatsapp-render-42jc.onrender.com';
+
 // --- Health-check para Render ---
 app.get('/', (_req, res) => res.send('OK'));
 
@@ -40,13 +43,16 @@ const client = new Client({
   puppeteer: { args:['--no-sandbox','--disable-setuid-sandbox'] }
 });
 
+// Genera el QR en consola y avisa la ruta pública
 client.on('qr', qr => {
   lastQr = qr;
-  console.log('QR disponible en: https://tu-api-deployada.com/qr');
+  qrcode.generate(qr, { small: true });
+  console.log(`QR disponible en: ${BASE_URL}/qr`);
 });
 
 client.on('ready', () => console.log('🤖 Carlos está listo para ayudar.'));
 
+// --- Manejo de mensajes y flujo de conversación ---
 client.on('message', async msg => {
   const chat = msg.from;
   const text = (msg.body || '').trim();
@@ -83,7 +89,7 @@ client.on('message', async msg => {
     return;
   }
 
-  // FLUJOS DE RESPUESTA
+  // Menú principal
   if (S.step === 'menu') {
     if (!/^[1-6]$/.test(text)) {
       return msg.reply('Por favor responde con un número del 1 al 6.');
@@ -94,7 +100,7 @@ client.on('message', async msg => {
     return client.emit('message', msg);
   }
 
-  // --- BENEFICIOS ---
+  // Beneficios por tema
   const beneficios = {
     asilo: `🏛️ *Asilo*
 • Protección ante persecución por motivos de raza, religión, nacionalidad, opinión política o pertenencia a un grupo social
@@ -125,7 +131,6 @@ client.on('message', async msg => {
 • Vía preferente y ágil para solicitar la Green Card a futuro`
   };
 
-  // --- RESPUESTAS por TEMA ---
   const tema = S.step;
   if (beneficios[tema]) {
     await msg.reply(`${beneficios[tema]}
@@ -141,6 +146,7 @@ client.on('message', async msg => {
     return;
   }
 
+  // Opciones tras mostrar beneficios
   if (/_opciones$/.test(S.step)) {
     if (text === '1') {
       await msg.reply(
@@ -161,7 +167,7 @@ client.on('message', async msg => {
     return;
   }
 
-  // --- CLIENTES EXISTENTES ---
+  // Clientes existentes
   if (S.step === 'cliente') {
     await msg.reply(
       `📂 ¿Quién está llevando tu caso?
@@ -196,7 +202,7 @@ client.on('message', async msg => {
     return msg.reply('Responde con un número válido (1–8).');
   }
 
-  // --- OTROS CASOS ---
+  // Otros asuntos
   if (S.step === 'otro') {
     await msg.reply(
       `📩 Para cualquier otro asunto, puedes escribirnos a contacto@gmmigration.com
@@ -208,11 +214,12 @@ Uno de nuestros asesores te responderá lo antes posible ✉️.`
     return;
   }
 
-  // --- FALLBACK ---
+  // Fallback
   await msg.reply('📍 Reiniciando conversación...');
   S.step = 'inicio';
   saveState();
   return client.emit('message', msg);
 });
 
+// Inicia el cliente de WhatsApp
 client.initialize();
