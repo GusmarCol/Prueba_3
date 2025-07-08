@@ -11,9 +11,6 @@ const STATE_FILE = 'state.json';
 let state = {};
 let lastQr = '';
 
-// URL fija de tu despliegue
-const BASE_URL = 'https://bot-whatsapp-render-42jc.onrender.com';
-
 // --- Health-check para Render ---
 app.get('/', (_req, res) => res.send('OK'));
 
@@ -43,16 +40,13 @@ const client = new Client({
   puppeteer: { args:['--no-sandbox','--disable-setuid-sandbox'] }
 });
 
-// Genera el QR en consola y avisa la ruta pública
 client.on('qr', qr => {
   lastQr = qr;
-  qrcode.generate(qr, { small: true });
-  console.log(`QR disponible en: ${BASE_URL}/qr`);
+  console.log('QR disponible en: https://tu-api-deployada.com/qr');
 });
 
 client.on('ready', () => console.log('🤖 Carlos está listo para ayudar.'));
 
-// --- Manejo de mensajes y flujo de conversación ---
 client.on('message', async msg => {
   const chat = msg.from;
   const text = (msg.body || '').trim();
@@ -63,7 +57,8 @@ client.on('message', async msg => {
 
   // Reinicio si inactivo > 3 min
   if (now - S.last > 180000) {
-    await client.sendMessage(chat, '⏳ Parece que ya no sigues conmigo. Reiniciaremos la conversación.');
+    await client.sendMessage(chat, '🕒 Parece que estás ocupado. Puedes volver cuando quieras; estoy a punto de cerrar el chat.');
+    await client.sendMessage(chat, '🔁 ¡Listo! Puedes escribirme cualquier cosa y volveremos a empezar.');
     S.step = 'inicio';
   }
   S.last = now;
@@ -89,7 +84,7 @@ client.on('message', async msg => {
     return;
   }
 
-  // Menú principal
+  // FLUJOS DE RESPUESTA
   if (S.step === 'menu') {
     if (!/^[1-6]$/.test(text)) {
       return msg.reply('Por favor responde con un número del 1 al 6.');
@@ -100,77 +95,19 @@ client.on('message', async msg => {
     return client.emit('message', msg);
   }
 
-  // Beneficios por tema
-  const beneficios = {
-    asilo: `🏛️ *Asilo*
-• Protección ante persecución por motivos de raza, religión, nacionalidad, opinión política o pertenencia a un grupo social
-• Permiso de trabajo a los 150 días de haber presentado la solicitud
-• Derecho a permanecer legalmente en EE.UU. durante el proceso
-• Posibilidad de derivar estatus a cónyuge e hijos menores de 21 años
-• Acceso a servicios públicos y asistencia mientras tu caso está en trámite`,
-
-    f1: `🎓 *Visa F-1*
-• Estudiar en una institución acreditada
-• Trabajo en campus (20h/sem)
-• OPT: trabajo a tiempo completo hasta 12 meses tras graduarte
-• Networking y oportunidades académicas
-• Plataforma de lanzamiento para otros visados`,
-
-    eb2: `💼 *Visa EB-2 NIW*
-• No necesitas oferta de empleo ni certificación laboral
-• Tú mismo presentas la petición (self-petition)
-• Deriva estatus a cónyuge e hijos menores de 21 años
-• Libertad de viaje una vez haces el ajuste de estatus
-• Camino directo a la Green Card`,
-
-    l1a: `🌐 *Visa L-1A*
-• Permite trasladar ejecutivos o gerentes de tu empresa extranjera a EE.UU.
-• Visa rápida (meses en vez de años)
-• Cónyuge con L-2 puede obtener permiso de trabajo abierto
-• Facilita expansión de tu negocio en EE.UU.
-• Vía preferente y ágil para solicitar la Green Card a futuro`
-  };
-
-  const tema = S.step;
-  if (beneficios[tema]) {
-    await msg.reply(`${beneficios[tema]}
-
-🔗 Más información: https://guias.gmmigration.com/
-
-¿Quieres avanzar con este proceso?
-1️⃣ Ver planes con descuento
-2️⃣ Saber si aplico
-3️⃣ Volver al menú principal`);
-    S.step = `${tema}_opciones`;
+  // Respuesta para cualquier tipo de entrada no válida
+  if (!/^[0-9]+$/.test(text)) {
+    await client.sendMessage(chat, '🤖 Recuerda que debes responder con el *número* de la opción que deseas. Volveremos al menú principal.');
+    S.step = 'inicio';
     saveState();
-    return;
+    return client.emit('message', msg);
   }
 
-  // Opciones tras mostrar beneficios
-  if (/_opciones$/.test(S.step)) {
-    if (text === '1') {
-      await msg.reply(
-        `💸 Durante *julio*, tenemos una *oferta exclusiva* solo para las *primeras 50 solicitudes*.
-¡Aprovecha el descuento antes de que se acaben los cupos!
-
-👉 Visita https://gmmigration.com y desliza hacia abajo para ver los planes.`
-      );
-    } else if (text === '2') {
-      await msg.reply('🔍 Revisa si calificas aquí: https://tally.so/r/3qq962');
-    } else if (text === '3') {
-      S.step = 'inicio';
-      saveState();
-      return client.emit('message', msg);
-    } else {
-      await msg.reply('❗ Responde con 1, 2 o 3.');
-    }
-    return;
-  }
-
-  // Clientes existentes
+  // --- OPCIÓN 5: CLIENTES EXISTENTES ---
   if (S.step === 'cliente') {
     await msg.reply(
       `📂 ¿Quién está llevando tu caso?
+
 1️⃣ Gustavo M.
 2️⃣ Vianny J.
 3️⃣ Arelys J.
@@ -178,7 +115,7 @@ client.on('message', async msg => {
 5️⃣ Michael J.
 6️⃣ Cindy P.
 7️⃣ No lo recuerdo
-8️⃣ Volver al menú`
+8️⃣ Volver al menú principal`
     );
     S.step = 'cliente_opciones';
     saveState();
@@ -186,23 +123,45 @@ client.on('message', async msg => {
   }
 
   if (S.step === 'cliente_opciones') {
-    if (text === '8') {
+    const nombres = ['Gustavo M.', 'Vianny J.', 'Arelys J.', 'Steven P.', 'Michael J.', 'Cindy P.', 'Otro agente'];
+    const i = parseInt(text);
+
+    if (i === 8) {
       S.step = 'inicio';
       saveState();
       return client.emit('message', msg);
     }
-    const nombres = ['Gustavo M.', 'Vianny J.', 'Arelys J.', 'Steven P.', 'Michael J.', 'Cindy P.', 'Otro agente'];
-    const i = parseInt(text);
+
     if (i >= 1 && i <= 7) {
-      await msg.reply(`✅ Gracias. Hemos registrado que tu caso lo lleva *${nombres[i-1]}*. Si deseas agendar algo, escríbenos directamente.`);
+      if (i === 7) {
+        await msg.reply(`🧠 No te preocupes, yo lo averiguo por ti.
+
+Solo necesito estos datos para ayudarte:
+
+• Nombre completo
+• Correo electrónico
+• Mejor número para llamarte 📞
+
+En breve un asesor te contactará y te confirmará quién lleva tu caso. ¡Gracias por tu confianza! ✨`);
+      } else {
+        await msg.reply(`✅ Gracias. Para agendarte con *${nombres[i-1]}*, por favor regálame esta información:
+
+• Nombre completo
+• Correo electrónico
+• Mejor número para llamarte 📞
+
+Con esto agendaremos tu consulta lo antes posible. ¡Gracias por confiar en GM Migration! 🇺🇸`);
+      }
+      // Enviar info al admin manualmente después
       S.step = 'inicio';
       saveState();
       return;
     }
+
     return msg.reply('Responde con un número válido (1–8).');
   }
 
-  // Otros asuntos
+  // --- OTROS CASOS ---
   if (S.step === 'otro') {
     await msg.reply(
       `📩 Para cualquier otro asunto, puedes escribirnos a contacto@gmmigration.com
@@ -214,12 +173,11 @@ Uno de nuestros asesores te responderá lo antes posible ✉️.`
     return;
   }
 
-  // Fallback
+  // --- FALLBACK ---
   await msg.reply('📍 Reiniciando conversación...');
   S.step = 'inicio';
   saveState();
   return client.emit('message', msg);
 });
 
-// Inicia el cliente de WhatsApp
 client.initialize();
